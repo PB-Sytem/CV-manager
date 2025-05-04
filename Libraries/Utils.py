@@ -80,7 +80,6 @@ def merge_nearby_rects(rects, margin=20):
                         changed = True
                         break
 
-        # Объединяем все прямоугольники в группе в один
         x_coords = [x for (x, _, w, _) in group] + [x + w for (x, _, w, _) in group]
         y_coords = [y for (_, y, _, h) in group] + [y + h for (_, y, _, h) in group]
         x_min, x_max = min(x_coords), max(x_coords)
