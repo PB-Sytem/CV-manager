@@ -1,17 +1,8 @@
 env: "local"
 
-
+Name: "PB Manager"
+Get_Car_By_Address_URL: "some addr" # Получение данных об автомобиле по адресу
 Camera:
-  width: 500           # Ширина окна с камерой
-  height: 400          # Высота окна с камерой
-  fps: 25              # Кадры в секунду
-
-  exit_button_code: 27 # кнопка выхода с программы -> esc
-
-
-Storage:
-  host: "localhost"    # хост
-  port: 5432           # порт
-  database: "postgres" # название БД
-  password: "postgres"
-  username: "postgres"
+  width: 1024           # Ширина окна с камерой
+  height: 768          # Высота окна с камерой
+  fps: 30              # Кадры в секунду

@@ -3,7 +3,7 @@ import logging
 from yaml import load
 
 
-def init_logger() -> logging.Logger:
+def configure_logger() -> logging.Logger:
     logger = logging.getLogger(__name__)
 
     # console_handler is object to write logs in console
@@ -19,14 +19,12 @@ def init_logger() -> logging.Logger:
     return logger
 
 
-#  Config - class that parses config files
-class Config:
+class AppConfig:
     def __init__(self, logger):
-        self.__logger = logger
-        self.config = {
+        self.Logger = logger
+        self.Config = {
             "Config": {
                 "Camera": {},
-                "Storage": {} 
             }
         }
         
@@ -35,7 +33,7 @@ class Config:
             with open(f'./config/{config_filename}', 'r') as cfg_f:
                 config = load(cfg_f, Loader = yaml.FullLoader)
                 self.config = config
-                self.__logger.info(f'Config successfully loaded. Data: {self.config}')
+                self.Logger.info(f'Config successfully loaded. Data: {self.config}')
 
         except FileNotFoundError:
-            self.__logger.error("Config file not found")
+            self.Logger.error("Config file not found")
