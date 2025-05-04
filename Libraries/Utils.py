@@ -18,78 +18,73 @@ def dist(point1, point2) -> float:
 
 
 def filter_approx_countours(approx) -> bool:
-    if len(approx)==4:
-        if abs(approx[2,0,0]-approx[0,0,0])<10:
-            return False
-        if abs(approx[2,0,1]-approx[0,0,1])<10:
-            return False
-        if abs(dist(approx[0,0],approx[1,0])/dist(approx[2,0],approx[3,0])-1)>0.4:
-            return False
-        if abs(dist(approx[0,0],approx[3,0])/dist(approx[1,0],approx[2,0])-1)>0.4:
-            return False
-        return True
-    return False
+    if len(approx) != 4:
+        return False 
+
+    x0, y0 = approx[0][0]
+    x2, y2 = approx[2][0]
+
+    if abs(x2 - x0) < 20 or abs(y2 - y0) < 10:
+        return False
+
+    horizontal1 = dist(approx[0][0], approx[1][0])
+    horizontal2 = dist(approx[2][0], approx[3][0])
+    vertical1 = dist(approx[0][0], approx[3][0])
+    vertical2 = dist(approx[1][0], approx[2][0])
+
+    if horizontal2 == 0 or vertical2 == 0:
+        return False
+
+    ratio_h = horizontal1 / horizontal2
+    ratio_v = vertical1 / vertical2
+
+    if abs(ratio_h - 1) > 0.6: 
+        return False
+    if abs(ratio_v - 1) > 0.6:
+        return False
+
+    return True
 
 
-def screen_proccessing(scr, aprx_cntrs):    
-    convert_to_gray = cv2.cvtColor(scr, cv2.COLOR_BGR2GRAY)
-    binary_thresh = cv2.threshold(convert_to_gray, 0, 255, cv2.THRESH_OTSU)[1]
-    contours, hierarchy  = cv2.findContours(binary_thresh, cv2.RETR_TREE, cv2.CHAIN_APPROX_SIMPLE)
-    height, width = binary_thresh.shape[:2]
-    contours_image = np.zeros((height, width, 3), dtype=np.uint8)
+def merge_nearby_rects(rects, margin=20):
+    def expand_rect(rect, margin):
+        x, y, w, h = rect
+        return (x - margin, y - margin, w + 2 * margin, h + 2 * margin)
 
-    for countour in contours:
-        approx = cv2.approxPolyDP(countour, cv2.arcLength(countour, True) * 0.02, True)
-        append = False
-        append = True if filter_approx_countours(approx) else False
-        
-        if append:
-            aprx_cntrs.append(approx)
-    
-    for item in aprx_cntrs:
-        p1, p2 = get_rect(item)
-        cv2.rectangle(scr, p1, p2, (0, 255, 0), 2)
-    
-    
-'''
-cap = cv2.VideoCapture(1)
-approx_countours = []
-eps = 0.02 
+    def rects_overlap(r1, r2):
+        x1, y1, w1, h1 = r1
+        x2, y2, w2, h2 = r2
+        return not (x1 + w1 < x2 or x2 + w2 < x1 or y1 + h1 < y2 or y2 + h2 < y1)
 
-while True:
-    ret, img = cap.read()
-    gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
-    thresh = cv2.threshold(gray, 0, 255, cv2.THRESH_OTSU)[1]
+    used = [False] * len(rects)
+    merged = []
 
-    contours, hierarchy  = cv2.findContours(thresh, cv2.RETR_TREE, cv2.CHAIN_APPROX_SIMPLE)
+    for i in range(len(rects)):
+        if used[i]:
+            continue
 
-    height, width = thresh.shape[:2]
-    contours_image = np.zeros((height, width, 3), dtype=np.uint8)
+        base = rects[i]
+        group = [base]
+        used[i] = True
 
-    for countour in contours:
-        arclen = cv2.arcLength(countour, True)
-        epsilon = arclen * eps
-        approx = cv2.approxPolyDP(countour, epsilon, True)
-        append=False
-        if filter_approx_countours(approx):
-            append=True
-        
-        else:
-            append=False
-        if append:
-         approx_countours.append(approx)
-    
-    
-    for item in approx_countours:
-        p1,p2 = get_rect(item)
-        cv2.rectangle(img,p1,p2,(0,255,0),2)
-    # cv2.drawContours(img, approx_countours, -1, (0, 255, 0), 1, cv2.LINE_AA, hierarchy, 1)
-    cv2.imshow("PB Model", img)
-    approx_countours = []
-   
-    if cv2.waitKey(1) & 0xFF == ord('q'):           # Выход по клавишам: command + q
-        break
-            
-cap.release()
-cv2.destroyAllWindows()
-'''
+        changed = True
+        while changed:
+            changed = False
+            for j in range(len(rects)):
+                if used[j]:
+                    continue
+                for r in group:
+                    if rects_overlap(expand_rect(r, margin), expand_rect(rects[j], margin)):
+                        group.append(rects[j])
+                        used[j] = True
+                        changed = True
+                        break
+
+        # Объединяем все прямоугольники в группе в один
+        x_coords = [x for (x, _, w, _) in group] + [x + w for (x, _, w, _) in group]
+        y_coords = [y for (_, y, _, h) in group] + [y + h for (_, y, _, h) in group]
+        x_min, x_max = min(x_coords), max(x_coords)
+        y_min, y_max = min(y_coords), max(y_coords)
+        merged.append((x_min, y_min, x_max - x_min, y_max - y_min))
+
+    return merged
